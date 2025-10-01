@@ -1,0 +1,82 @@
+# FIN7 Threat Actor Profile
+
+**Document Version:** 1.0  
+**Last Updated:** 2025-10-01
+
+---
+
+### Executive Summary
+
+FIN7 (also known as the **Carbanak Group**) is a sophisticated and persistent financially motivated threat actor. Initially known for targeting financial institutions with their signature **Carbanak RAT** to manipulate systems and exfiltrate funds, the group has evolved its tactics. In recent years, FIN7 has become a key player in the Ransomware-as-a-Service (RaaS) ecosystem, with documented affiliations and TTP overlaps with major ransomware operations including **REvil, Conti, DarkSide, BlackMatter,** and **Black Basta**. Their operations are characterized by well-executed phishing campaigns, the use of custom tooling for defense evasion, and a deep understanding of enterprise network exploitation.
+
+### Threat Actor At-a-Glance
+
+| Attribute         | Details                                                                  |
+| :---------------- | :----------------------------------------------------------------------- |
+| **Also Known As** | Carbanak Group, Navigator Group, ITG14                                   |
+| **Motivation** | Financially-Motivated Cybercrime                                         |
+| **Primary Targets** | Retail, Hospitality, Restaurant, Finance, Energy, High-Tech              |
+| **Key TTPs** | Spear-Phishing, Macro Execution, EDR Evasion, Ransomware Deployment      |
+| **Associated Malware**| Carbanak RAT, Cobalt Strike, AuKill/AvNeutralizer, BadRabbit, Black Basta |
+
+---
+
+### Core Tactics, Techniques, and Procedures (TTPs) - Mapped to MITRE ATT&CK®
+
+| Phase             | MITRE ATT&CK® Technique                             | Description                                                                      |
+| :---------------- | :-------------------------------------------------- | :------------------------------------------------------------------------------- |
+| **Initial Access**| `T1566.001` - Phishing: Spearphishing Attachment    | Delivers malicious Word/Excel attachments with embedded macros to drop beacons/RATs. |
+| **Execution** | `T1059.005` - Visual Basic                          | Macro-enabled Office documents launch loaders or establish beacon connections.         |
+| **Persistence** | `T1547.001` - Registry Run Keys / Startup Folder    | Creates HKCU Run entries for malware like Carbanak. A notable example is `shell64` under `HKCU\Software\...\Run`. |
+| **Privilege Escalation**| `T1562.001` - Disable or Modify Tools           | Employs custom EDR evasion tools to disable or bypass endpoint protection.       |
+| **Defense Evasion**| `T1562.001` - Impair Defenses: Disable or Modify Tools | Utilizes tools like `AuKill` to tamper with multiple EDR solutions and hide activity. |
+| **Credential Access**| `T1555` - Credentials from Password Stores            | Harvests credentials from hosts using RAT modules and post-exploitation frameworks. |
+| **Discovery** | `T1082` - System Information Discovery              | Enumerates domains, shares, and users on the network to plan lateral movement.    |
+| **Lateral Movement**| `T1021.001` - Remote Desktop Protocol               | Leverages stolen credentials and exploits RDP for movement across the network.   |
+| **Command & Control**| `T1071.001` - Application Layer Protocol: Web Protocols | Uses `HTTPS/HTTP` for outbound C2 beaconing to actor-controlled infrastructure.   |
+| **Exfiltration** | `T1048` - Exfiltration Over Alternative Protocol    | Steals data and exfiltrates funds, a core tactic of original Carbanak campaigns. |
+| **Impact** | `T1486` - Data Encrypted for Impact                 | Deploys ransomware for file encryption and extortion, often in affiliation with RaaS operations. |
+
+---
+
+### Tooling and Malware Analysis
+
+* **Carbanak RAT:** A sophisticated Remote Access Trojan used to infiltrate financial institutions, manipulate systems, and exfiltrate funds. Its persistence is often achieved via registry run keys like `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\shell64`.
+
+* **Cobalt Strike:** A commercial penetration testing framework heavily abused by FIN7. It is typically delivered via phishing and used for C2 beaconing, lateral movement, and post-exploitation activities.
+
+* **AuKill/AvNeutralizer:** A custom EDR evasion toolset linked to FIN7 and its overlaps with Black Basta. It is designed to terminate, unload, or otherwise tamper with various endpoint security solutions to operate undetected.
+
+* **BadRabbit Ransomware:** A ransomware variant previously distributed by FIN7 via drive-by compromises and phishing campaigns to encrypt files and demand payment.
+
+---
+
+### Indicators of Compromise (IOCs) and Activity Patterns
+
+#### Network Indicators
+* Suspicious outbound connections to unknown external IPs/domains, consistent with Cobalt Strike C2 beaconing behavior.
+* DNS queries for domains known to be associated with FIN7 C2 infrastructure (e.g., `legitglobaldns.com`).
+
+#### Host-Based Indicators
+* **Persistence Keys:** Presence of suspicious entries in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, especially values named `shell64`.
+* **File Artifacts:** Dropped DLLs or executables in temporary paths, such as `C:\Windows\Temp\beacon.dll` (Cobalt Strike) or `C:\Windows\Temp\harshfile.exe` (BadRabbit).
+* **Ransomware Behavior:** Mass file renaming with unusual extensions, creation of ransom notes in multiple directories, and deletion of Volume Shadow Copies.
+
+#### Delivery Artifacts
+* Email attachments (e.g., `.docm`, `.xlsm`) containing malicious macros.
+
+---
+
+### Defensive Detections and Mitigations
+
+1.  **Email & Macro Hardening:** Block or restrict Office macros originating from the internet. Use email security gateways to sandbox and analyze attachments. Enforce DMARC, DKIM, and SPF to combat spoofing.
+
+2.  **EDR Integrity Monitoring:** Monitor and alert on any attempts to stop, unload, or tamper with security services and drivers. Create detection rules for behaviors consistent with tools like `AuKill`.
+
+3.  **Registry & Autorun Auditing:** Actively monitor for anomalous additions to registry run keys (`HKCU/Run`, `HKLM/Run`) and other startup locations.
+
+4.  **Network Egress Controls:** Restrict outbound traffic to only known-good destinations. Implement TLS inspection and proactive DNS monitoring to detect and block C2 communications.
+
+5.  **RDP Hygiene:** Disable RDP on internet-facing systems. Enforce Multi-Factor Authentication (MFA) for all administrative and remote access. Monitor for anomalous RDP session creation and failed login attempts.
+
+6.  **Patch & Exposure Management:** Prioritize patching of known exploited vulnerabilities, especially on internet-facing assets. Segment networks to limit the blast radius of a potential compromise.
